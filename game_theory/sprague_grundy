@@ -1,0 +1,32 @@
+#include <iostream>
+#include <vector>
+#define endl "\n"
+typedef long long ll;
+using namespace std;
+
+int num, p;
+int sum = 0;
+vector<int> grundys;
+
+bool solve() {
+    cin >> num;
+
+    for (int i = 0; i < num; ++i) {
+        cin >> p;
+        grundys.push_back(p);
+    }
+
+    for (int grundy : grundys) {
+        sum ^= grundy;
+    }
+
+    if (sum) return true;
+    else return false;
+}
+
+int main() {
+    ios::sync_with_stdio(0); cin.tie(0); cout.tie(0);
+    if (solve()) cout << "WINNING";
+    else cout << "LOSING";
+    return 0;
+}
