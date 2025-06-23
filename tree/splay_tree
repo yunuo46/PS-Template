@@ -1,0 +1,270 @@
+#include <iostream>
+#define endl "\n"
+typedef long long ll;
+#define pii pair<int, int>
+using namespace std;
+
+struct Node {
+    int key;
+    int cnt;
+    shared_ptr<Node> parent;
+    shared_ptr<Node> left;
+    shared_ptr<Node> right;
+
+    Node(int k) : key(k), cnt(1), parent(nullptr), left(nullptr), right(nullptr) {}
+};
+
+class SplayTree {
+private:
+    shared_ptr<Node> root;
+
+    void left_rotate(shared_ptr<Node> x) {
+        shared_ptr<Node> y = x->right;
+        x->right = y->left;
+        if (y->left) {
+            y->left->parent = x;
+        }
+        y->parent = x->parent;
+        if (!x->parent) {
+            root = y;
+        }
+        else if (x == x->parent->left) {
+            x->parent->left = y;
+        }
+        else {
+            x->parent->right = y;
+        }
+        y->left = x;
+        x->parent = y;
+
+        update_cnt(x);
+        update_cnt(y);
+    }
+
+    void right_rotate(shared_ptr<Node> x) {
+        shared_ptr<Node> y = x->left;
+        x->left = y->right;
+        if (y->right) {
+            y->right->parent = x;
+        }
+        y->parent = x->parent;
+        if (!x->parent) {
+            root = y;
+        }
+        else if (x == x->parent->left) {
+            x->parent->left = y;
+        }
+        else {
+            x->parent->right = y;
+        }
+        y->right = x;
+        x->parent = y;
+
+        update_cnt(x);
+        update_cnt(y);
+    }
+
+    void splay(shared_ptr<Node> x) {
+        if (!x) return;
+        while (x->parent) {
+            shared_ptr<Node> p = x->parent;
+            shared_ptr<Node> g = p->parent;
+
+            if (!g) { // Zig
+                if (x == p->left) {
+                    right_rotate(p);
+                }
+                else {
+                    left_rotate(p);
+                }
+            }
+            else {
+                if (x == p->left && p == g->left) { // Zig-Zig
+                    right_rotate(g);
+                    right_rotate(p);
+                }
+                else if (x == p->right && p == g->right) { // Zig-Zig
+                    left_rotate(g);
+                    left_rotate(p);
+                }
+                else if (x == p->left && p == g->right) { // Zig-Zag
+                    right_rotate(p);
+                    left_rotate(g);
+                }
+                else { // Zig-Zag
+                    left_rotate(p);
+                    right_rotate(g);
+                }
+            }
+        }
+    }
+
+    shared_ptr<Node> find_max(shared_ptr<Node> node) {
+        while (node && node->right) {
+            node = node->right;
+        }
+        return node;
+    }
+
+    void update_cnt(shared_ptr<Node> node) {
+        if (!node) return;
+        node->cnt = 1;
+        if (node->left) node->cnt += node->left->cnt;
+        if (node->right) node->cnt += node->right->cnt;
+    }
+
+    int get_height(shared_ptr<Node> node) {
+        if (!node) {
+            return 0;
+        }
+        return 1 + max(get_height(node->left), get_height(node->right));
+    }
+
+    void print_node(shared_ptr<Node> current_node, string indent, bool is_last) {
+        if (current_node != nullptr) {
+            cout << indent;
+
+            if (is_last) {
+                cout << "R----";
+                indent += "     ";
+            }
+            else {
+                cout << "L----";
+                indent += "|    ";
+            }
+
+            cout << current_node->key << endl;
+
+            print_node(current_node->left, indent, false);
+            print_node(current_node->right, indent, true);
+        }
+    }
+
+public:
+    SplayTree() : root(nullptr) {}
+
+    void insert(int key) {
+        if (!root) {
+            root = make_shared<Node>(key);
+            return;
+        }
+
+        shared_ptr<Node> current = root;
+        shared_ptr<Node> parent = nullptr;
+        while (current) {
+            parent = current;
+            if (key < current->key) {
+                current = current->left;
+            }
+            else if (key > current->key) {
+                current = current->right;
+            }
+            else { // 중복되는 경우
+                splay(current);
+                return;
+            }
+        }
+
+        shared_ptr<Node> new_node = make_shared<Node>(key);
+        new_node->parent = parent;
+        if (key < parent->key) {
+            parent->left = new_node;
+        }
+        else {
+            parent->right = new_node;
+        }
+        splay(new_node);
+    }
+
+    shared_ptr<Node> search(int key) {
+        shared_ptr<Node> current = root;
+        shared_ptr<Node> last = nullptr;
+
+        while (current) {
+            last = current;
+            if (key < current->key) {
+                current = current->left;
+            }
+            else if (key > current->key) {
+                current = current->right;
+            }
+            else { // 찾은 경우
+                splay(current);
+                return current;
+            }
+        }
+        if (last) { // 마지막 방문 노드 splay
+            splay(last);
+        }
+        return nullptr;
+    }
+
+    void remove(int key) {
+        shared_ptr<Node> node = search(key);
+        if (!node) {
+            return;
+        }
+
+        shared_ptr<Node> left_node = node->left;
+        shared_ptr<Node> right_node = node->right;
+
+        if (!left_node) {
+            root = right_node;
+            if (root) {
+                root->parent = nullptr;
+            }
+        }
+        else {
+            left_node->parent = nullptr;
+            shared_ptr<Node> max_node = find_max(left_node);
+            splay(max_node);
+            root = max_node;
+            root->right = right_node;
+            if (right_node) {
+                right_node->parent = root;
+            }
+        }
+    }
+
+    shared_ptr<Node> find_kth(int k) { // 0-based
+        if (!root || k < 0 || k >= root->cnt) {
+            return nullptr;
+        }
+
+        shared_ptr<Node> current = root;
+        while (current) {
+            int left_size = (current->left) ? current->left->cnt : 0;
+
+            if (k < left_size) { // 왼쪽 서브트리에 있는 경우
+                current = current->left;
+            }
+            else if (k > left_size) { // 오른쪽 서브트리에 있는 경우
+                k -= left_size + 1;
+                current = current->right;
+            }
+            else {
+                splay(current);
+                return current;
+            }
+        }
+        return nullptr;
+    }
+
+    void print_tree() {
+        if (root) {
+            cout << root->key << endl;
+            print_node(root->left, "", false);
+            print_node(root->right, "", true);
+        }
+        else {
+            cout << "Tree is empty." << endl;
+        }
+    }
+};
+
+int main() {
+    ios::sync_with_stdio(0); cin.tie(0); cout.tie(0);
+    SplayTree tree;
+
+    return 0;
+}
