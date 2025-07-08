@@ -7,6 +7,8 @@ typedef unsigned int uint;
 #define pii pair<int, int>
 using namespace std;
 
+int n, q, num, l, r, x;
+
 struct Node {
 	int key;
 	int cnt;
@@ -75,6 +77,7 @@ private:
 			shared_ptr<Node> g = p->parent;
 
 			if (!g) { // Zig
+				push(p); push(x);
 				if (x == p->left) {
 					right_rotate(p);
 				}
@@ -83,6 +86,7 @@ private:
 				}
 			}
 			else {
+				push(g); push(p); push(x);
 				if (x == p->left && p == g->left) { // Zig-Zig
 					right_rotate(g);
 					right_rotate(p);
@@ -134,6 +138,7 @@ private:
 
 	void print_node(shared_ptr<Node> current_node, string indent, bool is_last) {
 		if (current_node != nullptr) {
+			push(current_node);
 			cout << indent;
 
 			if (is_last) {
@@ -244,18 +249,16 @@ public:
 		}
 
 		shared_ptr<Node> current = root;
-		push(current);
 		while (current) {
+			push(current);
 			int left_size = (current->left) ? current->left->cnt : 0;
 
 			if (k < left_size) { // 왼쪽 서브트리에 있는 경우
 				current = current->left;
-				push(current);
 			}
 			else if (k > left_size) { // 오른쪽 서브트리에 있는 경우
 				k -= left_size + 1;
 				current = current->right;
-				push(current);
 			}
 			else {
 				splay(current);
