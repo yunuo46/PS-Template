@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <memory>
 #define endl "\n"
 typedef long long ll;
 typedef unsigned int uint;
@@ -14,12 +15,13 @@ struct Node {
 	int cnt;
 	int mx, mn;
 	ll sum;
-	bool flip;
+	bool dummy, flip;
 	shared_ptr<Node> parent;
 	shared_ptr<Node> left;
 	shared_ptr<Node> right;
 
-	Node(int k) : key(k), cnt(1), mx(k), mn(k), sum(k), flip(0), parent(nullptr), left(nullptr), right(nullptr) {}
+	Node(int k, shared_ptr<Node> node) : key(k), cnt(1), mx(k), mn(k), sum(k), dummy(0), flip(0), parent(node), left(nullptr), right(nullptr) {}
+	Node(int k) : Node(k, nullptr) {}
 };
 
 class SplayTree {
@@ -169,10 +171,27 @@ private:
 
 public:
 	shared_ptr<Node> root;
+	shared_ptr<Node> idx[300'001];
 
 	SplayTree() : root(nullptr) {}
 
-	void insert(int key) {
+	void init() { // dummy node
+		root = make_shared<Node>(-300'001, nullptr);
+		auto current = root;
+		current->dummy = true;
+		for (int i = 1; i <= n; ++i) {
+			current->right = make_shared<Node>(i, current);
+			idx[i] = current->right;
+			current = current->right;
+		}
+		current->right = make_shared<Node>(300'001 , current);
+		current->right->dummy = true;
+
+		for (int i = n; i >= 1; --i) update(idx[i]);
+		splay(idx[n / 2]);
+	}
+
+	void insert(int key) { // default
 		if (!root) {
 			root = make_shared<Node>(key);
 			return;
@@ -257,8 +276,8 @@ public:
 		}
 	}
 
-	shared_ptr<Node> find_kth(int k) { // 0-based
-		if (!root || k < 0 || k >= root->cnt) {
+	shared_ptr<Node> find_kth(int k) { // 1-based
+		if (!root || k < 0 || k > root->cnt) {
 			return nullptr;
 		}
 
@@ -285,23 +304,8 @@ public:
 	shared_ptr<Node> gather(int s, int e) {
 		shared_ptr<Node> en = find_kth(e + 1);
 		shared_ptr<Node> sn = find_kth(s - 1);
-		if (!en) {
-			if (!sn) {// all
-				return root;
-			}
-			else { // s~
-				return root->right;
-			}
-		}
-		else {
-			if (!sn) { // ~e
-				return root->left;
-			}
-			else {
-				splay(en, sn);
-				return root->right->left; // s~e
-			}
-		}
+		splay(en, sn);
+		return root->right->left;
 	}
 
 	void flip(int s, int e) {
@@ -320,20 +324,18 @@ public:
 		}
 	}
 
-	void print(shared_ptr<Node> node) {
-		push(node);
-		if (node->left)print(node->left);
-		cout << node->key << " ";
-		if (node->right)print(node->right);
+	void get_idx(int x) {
+		splay(idx[x]);
+		cout << root->left->cnt << "\n";
 	}
 
-	void get_idx(int x) {
-	}
 };
+SplayTree tree;
 
 int main() {
 	ios::sync_with_stdio(0); cin.tie(0); cout.tie(0);
-	SplayTree tree;
+
+	tree.init();
 
 	return 0;
 }
