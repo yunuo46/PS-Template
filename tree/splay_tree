@@ -10,6 +10,7 @@ using namespace std;
 struct Node {
 	int key;
 	int cnt;
+	bool flip;
 	shared_ptr<Node> parent;
 	shared_ptr<Node> left;
 	shared_ptr<Node> right;
@@ -100,6 +101,14 @@ private:
 				}
 			}
 		}
+	}
+
+	void push(shared_ptr<Node> x) {
+		if (!x->flip) return;
+		swap(x->left, x->right);
+		if (x->left) x->left->flip = !x->left->flip;
+		if (x->right) x->right->flip = !x->right->flip;
+		x->flip = false;
 	}
 
 	shared_ptr<Node> find_max(shared_ptr<Node> node) {
@@ -235,15 +244,18 @@ public:
 		}
 
 		shared_ptr<Node> current = root;
+		push(current);
 		while (current) {
 			int left_size = (current->left) ? current->left->cnt : 0;
 
 			if (k < left_size) { // 왼쪽 서브트리에 있는 경우
 				current = current->left;
+				push(current);
 			}
 			else if (k > left_size) { // 오른쪽 서브트리에 있는 경우
 				k -= left_size + 1;
 				current = current->right;
+				push(current);
 			}
 			else {
 				splay(current);
@@ -258,7 +270,12 @@ public:
 		auto tmp = root;
 		find_kth(s - 1);
 		splay(tmp, root); // tmp : e+1, root = s-1
-		return root->right->left;
+		return root->right->left; // s~e
+	}
+
+	void flip(int s, int e) {
+		shared_ptr<Node> x = gather(s, e);
+		x->flip = !x->flip;
 	}
 
 	void print_tree() {
