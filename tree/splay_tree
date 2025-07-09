@@ -2,32 +2,36 @@
 #include <string>
 #include <algorithm>
 #include <memory>
+#include <vector>
 #define endl "\n"
 typedef long long ll;
 typedef unsigned int uint;
 #define pii pair<int, int>
 using namespace std;
 
-int n, q, num, l, r, x;
+int n, m, num, x, y;
+string s;
+int arr[100'001];
+vector<int> v;
 
 struct Node {
 	int key;
 	int cnt;
-	int mx, mn;
-	ll sum;
-	bool dummy, flip;
-	shared_ptr<Node> parent;
-	shared_ptr<Node> left;
-	shared_ptr<Node> right;
+	bool flip;
+	Node* parent;
+	Node* left;
+	Node* right;
 
-	Node(int k, shared_ptr<Node> node) : key(k), cnt(1), mx(k), mn(k), sum(k), dummy(0), flip(0), parent(node), left(nullptr), right(nullptr) {}
+	Node(int k, Node* node) : key(k), cnt(1), flip(0), parent(node), left(nullptr), right(nullptr) {}
 	Node(int k) : Node(k, nullptr) {}
+	Node() : Node(-1, nullptr) {}
+	~Node() { if (left) delete left; if (right) delete right; }
 };
 
 class SplayTree {
 private:
-	void left_rotate(shared_ptr<Node> x) {
-		shared_ptr<Node> y = x->right;
+	void left_rotate(Node* x) {
+		Node* y = x->right;
 		x->right = y->left;
 		if (y->left) {
 			y->left->parent = x;
@@ -49,8 +53,8 @@ private:
 		update(y);
 	}
 
-	void right_rotate(shared_ptr<Node> x) {
-		shared_ptr<Node> y = x->left;
+	void right_rotate(Node* x) {
+		Node* y = x->left;
 		x->left = y->right;
 		if (y->right) {
 			y->right->parent = x;
@@ -72,11 +76,11 @@ private:
 		update(y);
 	}
 
-	void splay(shared_ptr<Node> x, shared_ptr<Node> y = nullptr) { // x->y splay
+	void splay(Node* x, Node* y = nullptr) { // x->y splay
 		if (!x) return;
 		while (x->parent != y) {
-			shared_ptr<Node> p = x->parent;
-			shared_ptr<Node> g = p->parent;
+			Node* p = x->parent;
+			Node* g = p->parent;
 
 			push(g); push(p); push(x);
 
@@ -109,7 +113,7 @@ private:
 		}
 	}
 
-	void push(shared_ptr<Node> x) {
+	void push(Node* x) {
 		if (!x || !x->flip) return;
 		swap(x->left, x->right);
 		if (x->left) x->left->flip = !x->left->flip;
@@ -117,39 +121,32 @@ private:
 		x->flip = false;
 	}
 
-	shared_ptr<Node> find_max(shared_ptr<Node> node) {
+	Node* find_max(Node* node) {
 		while (node && node->right) {
 			node = node->right;
 		}
 		return node;
 	}
 
-	void update(shared_ptr<Node> node) {
+	void update(Node* node) {
 		if (!node) return;
 		node->cnt = 1;
-		node->sum = node->mx = node->mn = node->key;
 		if (node->left) {
 			node->cnt += node->left->cnt;
-			node->sum += node->left->sum;
-			node->mx = max(node->mx, node->left->mx);
-			node->mn = min(node->mn, node->left->mn);
 		}
 		if (node->right) {
 			node->cnt += node->right->cnt;
-			node->sum += node->right->sum;
-			node->mx = max(node->mx, node->right->mx);
-			node->mn = min(node->mn, node->right->mn);
 		}
 	}
 
-	int get_height(shared_ptr<Node> node) {
+	int get_height(Node* node) {
 		if (!node) {
 			return 0;
 		}
 		return 1 + max(get_height(node->left), get_height(node->right));
 	}
 
-	void print_node(shared_ptr<Node> current_node, string indent, bool is_last) {
+	void print_node(Node* current_node, string indent, bool is_last) {
 		if (current_node != nullptr) {
 			cout << indent;
 
@@ -170,35 +167,33 @@ private:
 	}
 
 public:
-	shared_ptr<Node> root;
-	shared_ptr<Node> idx[300'001];
+	Node* root;
+	Node* idx[100'001];
 
 	SplayTree() : root(nullptr) {}
 
 	void init() { // dummy node
-		root = make_shared<Node>(-300'001, nullptr);
+		root = new Node();
 		auto current = root;
-		current->dummy = true;
-		for (int i = 1; i <= n; ++i) {
-			current->right = make_shared<Node>(i, current);
-			idx[i] = current->right;
+		for (int i = 0; i < n; ++i) {
+			current->right = new Node(arr[i], current);
+			idx[arr[i]] = current->right;
 			current = current->right;
 		}
-		current->right = make_shared<Node>(300'001 , current);
-		current->right->dummy = true;
+		current->right = new Node(-1, current);
 
-		for (int i = n; i >= 1; --i) update(idx[i]);
+		for (int i = n; i >= 1; i--) update(idx[i]);
 		splay(idx[n / 2]);
 	}
 
 	void insert(int key) { // default
 		if (!root) {
-			root = make_shared<Node>(key);
+			root = new Node(key);
 			return;
 		}
 
-		shared_ptr<Node> current = root;
-		shared_ptr<Node> parent = nullptr;
+		Node* current = root;
+		Node* parent = nullptr;
 		while (current) {
 			parent = current;
 			if (key < current->key) {
@@ -213,7 +208,7 @@ public:
 			}
 		}
 
-		shared_ptr<Node> new_node = make_shared<Node>(key);
+		Node* new_node = new Node(key);
 		new_node->parent = parent;
 		if (key < parent->key) {
 			parent->left = new_node;
@@ -225,9 +220,9 @@ public:
 		return;
 	}
 
-	shared_ptr<Node> find(int key) {
-		shared_ptr<Node> current = root;
-		shared_ptr<Node> last = nullptr;
+	Node* find(int key) {
+		Node* current = root;
+		Node* last = nullptr;
 
 		while (current) {
 			push(current);
@@ -250,13 +245,13 @@ public:
 	}
 
 	void remove(int key) {
-		shared_ptr<Node> node = find(key);
+		Node* node = find(key);
 		if (!node) {
 			return;
 		}
 
-		shared_ptr<Node> left_node = node->left;
-		shared_ptr<Node> right_node = node->right;
+		Node* left_node = node->left;
+		Node* right_node = node->right;
 
 		if (!left_node) {
 			root = right_node;
@@ -266,7 +261,7 @@ public:
 		}
 		else {
 			left_node->parent = nullptr;
-			shared_ptr<Node> max_node = find_max(left_node);
+			Node* max_node = find_max(left_node);
 			splay(max_node);
 			root = max_node;
 			root->right = right_node;
@@ -276,16 +271,14 @@ public:
 		}
 	}
 
-	shared_ptr<Node> find_kth(int k) { // 1-based
+	Node* find_kth(int k) { // 1-based
 		if (!root || k < 0 || k > root->cnt) {
 			return nullptr;
 		}
-
-		shared_ptr<Node> current = root;
+		Node* current = root;
 		while (current) {
 			push(current);
 			int left_size = (current->left) ? current->left->cnt : 0;
-
 			if (k < left_size) { // 왼쪽 서브트리에 있는 경우
 				current = current->left;
 			}
@@ -301,15 +294,15 @@ public:
 		return nullptr;
 	}
 
-	shared_ptr<Node> gather(int s, int e) {
-		shared_ptr<Node> en = find_kth(e + 1);
-		shared_ptr<Node> sn = find_kth(s - 1);
+	Node* gather(int s, int e) {
+		Node* en = find_kth(e + 1);
+		Node* sn = find_kth(s - 1);
 		splay(en, sn);
 		return root->right->left;
 	}
 
 	void flip(int s, int e) {
-		shared_ptr<Node> x = gather(s, e);
+		Node* x = gather(s, e);
 		x->flip = !x->flip;
 	}
 
@@ -322,6 +315,13 @@ public:
 		else {
 			cout << "Tree is empty." << endl;
 		}
+	}
+
+	void print(Node* node) {
+		push(node);
+		if (node->left) print(node->left);
+		if (node->key > 0) cout << node->key;
+		if (node->right) print(node->right);
 	}
 
 	void get_idx(int x) {
